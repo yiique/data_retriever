@@ -1,6 +1,8 @@
 #!/bin/sh
-
-for i in $(seq 1 23)
+round=1000
+for i in $(seq 0 12)
 do
-    nohup python -u sqa_manager.py 0*$i 1000*$i $i > nohup.$i &
+    arg1=`expr $i \* $round`
+    arg2=`expr $i \* $round + $round`
+    nohup python -u sqa_manager.py $arg1 $arg2 $i > nohup.a$i &
 done
