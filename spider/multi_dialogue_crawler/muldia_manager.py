@@ -6,6 +6,7 @@ import sys
 import time
 
 sys.path.append("..")
+sys.path.append("../..")
 DIR = os.path.abspath(os.path.dirname(__file__))
 
 import json
