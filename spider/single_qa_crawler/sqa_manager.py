@@ -6,6 +6,7 @@ import sys
 import time
 
 sys.path.append("..")
+sys.path.append("../..")
 DIR = os.path.abspath(os.path.dirname(__file__))
 
 import json
@@ -14,14 +15,16 @@ import sys
 import time
 import urllib
 
-import url_manager
-import html_downloader
 import sqa_url_parser
-import html_saver
+
+from utils import url_manager
+from utils import html_downloader
+from utils import html_saver
 
 
 PREFIX = "https://zhidao.baidu.com/search?word="           # 后加搜索名gbk转码
 SUFFIX = "&ie=gbk&site=-1&sites=0&date=0&pn="              # 后加页数0/10/20
+replace = "https://zhidao.baidu.com/api/getdecpic?"
 
 KEY_WORDS = [
     "电影",
@@ -43,12 +46,14 @@ KEY_WORDS = [word.decode('utf-8') for word in KEY_WORDS]
 
 class Spider(object):
     def __init__(self, argvs):
-        # self.url_manager = url_manager.UrlManager("./new_urls.txt", "./old_urls.txt", "./bad_urls.txt")
+        self.url_manager = url_manager.UrlManager("./new_urls.txt-" + str(argvs[3]),
+                                                  "./old_urls.txt-" + str(argvs[3]),
+                                                  "./bad_urls.txt-" + str(argvs[3]))
         self.html_downloader = html_downloader.HtmlDownloader()
         self.qa_list_parser = sqa_url_parser.QAListParser()
         self.qa_parser = sqa_url_parser.QAParser()
         # self.qa_list_saver = html_saver.HtmlSaver("./test.txt")
-        self.qa_saver = html_saver.HtmlSaver("./actor_qa.txt-" + str(argvs[3]))
+        self.qa_saver = html_saver.HtmlSaver("./actor_qa.raw-" + str(argvs[3]))
 
     def main(self, file_name, argvs):
         entity_file = open(file_name)
@@ -60,7 +65,7 @@ class Spider(object):
             count[0] += 1
             if count[0] <= int(argvs[1]) or count[0] > int(argvs[2]):
                 continue
-            time.sleep(random.randint(3, 5))
+            # time.sleep(random.randint(3, 5))
 
             try:
                 sys.stdout.flush()
@@ -75,12 +80,11 @@ class Spider(object):
                 continue
 
             # level1
-            for i in range(0, 12):
+            for i in range(0, 10):
 
                 # level1: safe craw
                 craw_count = 0
                 html_cont = ""
-                temp_urls = []
                 while craw_count < 3:
                     try:
                         new_url_level1 = PREFIX + entity + SUFFIX + str(i * 10)
@@ -114,12 +118,21 @@ class Spider(object):
                     # level2: safe craw
                     count[2] += 1
                     craw_count = 0
-                    html_cont = ""
+                    # html_cont = ""
+                    time.sleep(0.5)
                     while craw_count < 3:
                         try:
                             html_cont = self.html_downloader.download_by_request(new_url_level2)
                             if "</html>" not in html_cont:
                                 raise
+                            self.qa_parser.refresh()
+                            self.qa_parser.feed(html_cont.decode('gbk'))
+                            if replace not in self.qa_parser.content["answer"]:
+                                raise
+                            self.qa_saver.write_file(json.dumps({
+                                "url": new_url_level2,
+                                "content": html_cont
+                            }))
                             break
                         except:
                             craw_count += 1
@@ -127,8 +140,10 @@ class Spider(object):
                         print "004-WARNING!!! TRY CRAW HTML LEVEL2 FAILED!"
                         print new_url_level2
                         warning_list[3] += 1
+                        self.url_manager.add_bad_url(new_url_level2)
                         continue
 
+                    '''
                     # level2: parse
                     try:
                         self.qa_parser.refresh()
@@ -158,11 +173,12 @@ class Spider(object):
                         print new_url_level2
                         warning_list[4] += 1
                         continue
-                    count[3] += 1
+                    count[3] += 1'''
+
 
         print "CRAWLER DONE, INFO: "
         print "count(try1/handle1/try2/handle2):", count
-        print "warning(name/craw1/parse1/craw2/parse2/empty/bad): ", warning_list
+        print "warning(name/craw1/parse1/craw2/): ", warning_list
 
 
     def main_qa_list(self, file_name):
