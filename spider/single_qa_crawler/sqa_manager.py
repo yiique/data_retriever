@@ -133,6 +133,7 @@ class Spider(object):
                                 "url": new_url_level2,
                                 "content": html_cont
                             }))
+                            print "question", self.qa_parser.content["question"].encode('utf-8'), time.ctime()
                             break
                         except:
                             craw_count += 1
